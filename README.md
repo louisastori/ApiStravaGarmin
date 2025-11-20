@@ -1,23 +1,21 @@
-# API Garmin & Strava – Cloudflare Workers
+# API Garmin & Strava - Cloudflare Workers / Supabase Edge
 
-Cette version tourne integralement sur Cloudflare Workers, KV et Cron Triggers (option A 0 EUR). Le worker appelle Strava et Garmin Connect, met les donnees dans un snapshot KV et expose les memes endpoints qu'avant sans serveur Express.
+Ce projet expose des endpoints Strava et Garmin depuis un runtime serverless. Il tourne nativement sur Cloudflare Workers (KV + Cron) et peut etre deploye sur Supabase Edge Functions (sans cache KV par defaut).
 
 ## Stack & fonctionnement
 
-- **Worker module** (`src/worker.js`) : gere `fetch` + `scheduled`.
-- **itty-router** : mini routeur pour Workers.
-- **KV namespace** (`GARMIN_STRAVA_CACHE`) : stocke le dernier snapshot `/api/overview`.
-- **Cron Trigger** : rafraichit automatiquement le cache (par defaut toutes les 2 h).
-- **Wrangler** : CLI pour dev local et deploiement.
-
-Tout est base sur `fetch`, `crypto-js`, `oauth-1.0a` et un cookie jar maison, donc aucune dependance Node-only.
+- Worker/Edge handler : `src/worker.js` (Cloudflare) ou `supabase/functions/garmin-strava/index.ts` (Supabase).
+- Routing : `itty-router`.
+- Cache : namespace KV `GARMIN_STRAVA_CACHE` (Cloudflare uniquement).
+- Cron : Cloudflare Cron triggers (optionnel) pour rafraichir `/api/overview`.
+- Outils : `wrangler` pour Cloudflare, `supabase` CLI pour les Edge Functions.
 
 ## Prerequis
 
-- Compte Cloudflare (Workers + KV gratuits).
 - Node.js 18+ et npm.
-- Identifiants Strava (client id, client secret, refresh token).
-- Identifiants Garmin Connect (email + mot de passe, MFA desactivee obligatoire pour l'instant).
+- Identifiants Strava : `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `STRAVA_REFRESH_TOKEN`.
+- Identifiants Garmin Connect : `GARMIN_EMAIL`, `GARMIN_PASSWORD` (+ `GARMIN_DOMAIN` si besoin).
+- Compte Cloudflare (Workers + KV) **ou** compte Supabase si tu deployes la fonction edge.
 
 ## Installation
 
@@ -29,74 +27,80 @@ npm install
 
 ## Configuration locale
 
-1. Copiez `.dev.vars.example` en `.dev.vars`.
-2. Renseignez vos valeurs :
+1. Copie `.dev.vars.example` en `.dev.vars`.
+2. Renseigne les valeurs :
 
 | Variable | Description |
 | --- | --- |
 | `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `STRAVA_REFRESH_TOKEN` | Identifiants OAuth Strava. |
 | `STRAVA_SCOPES` | CSV de scopes (defaut `read,profile:read_all,activity:read_all`). |
-| `GARMIN_EMAIL`, `GARMIN_PASSWORD` | Credentials Garmin Connect. |
+| `GARMIN_EMAIL`, `GARMIN_PASSWORD` | Identifiants Garmin Connect. |
 | `GARMIN_DOMAIN` | Optionnel (`garmin.com` par defaut). |
 | `DEFAULT_OVERVIEW_LIMIT` | Limite par defaut pour `/api/overview` (5). |
-| `CRON_OVERVIEW_LIMIT` | Limite utilisee par le Cron (20). |
+| `CRON_OVERVIEW_LIMIT` | Limite pour le Cron (20). |
 
-`wrangler dev` charge automatiquement `.dev.vars`. Pour la prod, utilisez `wrangler secret put` si vous voulez masquer certaines valeurs.
+`wrangler dev` charge automatiquement `.dev.vars`. Pour la prod Cloudflare, utilise `wrangler secret put` si tu veux masquer certaines valeurs.
 
 ## KV & Cron Cloudflare
 
-1. Creez la KV namespace :
+1. Cree la namespace KV :
    ```bash
    wrangler kv namespace create GARMIN_STRAVA_CACHE
    wrangler kv namespace create GARMIN_STRAVA_CACHE --preview
    ```
-   Copiez les IDs dans `wrangler.toml`.
+   Copie les IDs dans `wrangler.toml`.
+2. Ajuste la cron rule si besoin (`0 */2 * * *` = toutes les 2 h).
 
-2. Adaptez si besoin la Cron rule (`0 */2 * * *` = toutes les 2 h).
-
-## Developpement local
+## Developpement local (Cloudflare)
 
 ```bash
 npm run dev
 # http://127.0.0.1:8787
 ```
 
-## Deploiement
+## Deploiement (Cloudflare Workers)
 
 ```bash
 wrangler login   # 1re utilisation
 npm run deploy
 ```
 
-Le worker est accessible sur `<name>.workers.dev`. Vous pouvez ensuite attacher votre domaine.
+Le worker sera accessible sur `<name>.workers.dev` (ou ton domaine).
+
+## Deploiement (Supabase Edge Functions)
+
+1. Secrets Supabase : ajoute dans ton projet (via `supabase secrets set` ou le workflow GitHub) :
+   - `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `STRAVA_REFRESH_TOKEN`
+   - `GARMIN_EMAIL`, `GARMIN_PASSWORD`, `GARMIN_DOMAIN` (optionnel)
+   - `DEFAULT_OVERVIEW_LIMIT`, `CRON_OVERVIEW_LIMIT` (optionnel)
+2. Deploie : `supabase functions deploy garmin-strava --project-ref <PROJECT_REF> --import-map supabase/functions/import_map.json`
+3. Endpoint : `https://<PROJECT_REF>.functions.supabase.co/garmin-strava/api/overview?limit=5` (toutes les routes sont identiques à celles ci-dessous).
+
+Note : pas de KV sur Supabase, donc `/api/overview` recalcule les donnees à chaque appel (ou ajoute un stockage custom dans `src/cache.js`).
 
 ## Endpoints
 
 | Methode | Route | Description |
 | --- | --- | --- |
-| `GET` | `/health` | Statut du worker. |
+| `GET` | `/health` | Statut du service. |
 | `GET` | `/api/strava/profile` | Profil Strava (`/athlete`). |
 | `GET` | `/api/strava/activities?limit=50` | Dernieres activites Strava (max 200). |
 | `GET` | `/api/strava/stats` | Stats agregees Strava. |
 | `GET` | `/api/garmin/profile` | Profil Garmin Connect. |
 | `GET` | `/api/garmin/activities?limit=50` | Dernieres activites Garmin (max 200). |
 | `GET` | `/api/overview?limit=5&source=live` | Snapshot agrege (profil + activites + stats). `source=live` bypass le cache KV. |
-| `POST` | `/api/cache/overview/refresh` | Force un recalcul (a proteger via token cote GitLab CI si besoin). |
+| `POST` | `/api/cache/overview/refresh` | Force un recalcul (à proteger en prod). |
 
-Toutes les reponses sont en JSON, la stack trace nest exposee quen mode dev.
-
-## Cron Trigger
-
-Le handler `scheduled` appelle `refreshOverviewCache` pour remplir KV (`GARMIN_STRAVA_CACHE`). `/api/overview` renvoie en priorite le cache si le `limit` demande  celui deja stocke. Sinon (ou si `source=live`) il reconstruit le snapshot en direct.
+Toutes les reponses sont en JSON, la stack trace n est exposee qu en mode dev.
 
 ## Notes Garmin
 
-- Garmin nexpose pas dAPI publique : on reproduit le flux de lappli mobile (OAuth1/HMAC-SHA1, cookies, etc.). Un changement cote Garmin peut necessiter une mise a jour.
-- Si votre compte demande une validation MFA ou Update phone number, le worker renvoie un message explicite et nira pas plus loin.
-- Les appels partent des IP Cloudflare  surveillez les alertes de connexion sur votre compte Garmin.
+- Garmin n expose pas d API publique : on reproduit le flux de l appli mobile (OAuth1/HMAC-SHA1, cookies, etc.). Un changement cote Garmin peut necessiter une mise à jour.
+- Si le compte demande MFA ou Update phone number, la fonction renvoie un message explicite et s arrete.
+- Les appels partent des IP du provider (Cloudflare ou Supabase) : surveille les alertes de connexion sur ton compte Garmin.
 
-## Idees devolution
+## Idees d evolution
 
-- Stocker plusieurs snapshots (KV ou Durable Object) pour generer des timelines.
+- Stocker plusieurs snapshots (KV ou base) pour generer des timelines.
 - Ajouter un webhook Strava afin de rafraichir immediatement apres chaque activite.
-- Brancher votre GitLab Pages pour consommer `/api/overview` a intervalles reguliers.
+- Alimenter un site statique (GitHub Pages) en consommant `/api/overview`.

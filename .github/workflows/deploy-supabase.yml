@@ -1,0 +1,58 @@
+name: Deploy Supabase Edge Function
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+
+      - name: Check required secrets
+        run: |
+          missing=()
+          check() { [ -n "$1" ] || missing+=("$2"); }
+          check "${{ secrets.SUPABASE_ACCESS_TOKEN }}" SUPABASE_ACCESS_TOKEN
+          check "${{ secrets.SUPABASE_PROJECT_REF }}" SUPABASE_PROJECT_REF
+          check "${{ secrets.STRAVA_CLIENT_ID }}" STRAVA_CLIENT_ID
+          check "${{ secrets.STRAVA_CLIENT_SECRET }}" STRAVA_CLIENT_SECRET
+          check "${{ secrets.STRAVA_REFRESH_TOKEN }}" STRAVA_REFRESH_TOKEN
+          check "${{ secrets.GARMIN_EMAIL }}" GARMIN_EMAIL
+          check "${{ secrets.GARMIN_PASSWORD }}" GARMIN_PASSWORD
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Secrets manquants: ${missing[*]}" >&2
+            exit 1
+          fi
+
+      - name: Push Supabase secrets
+        run: |
+          supabase secrets set \
+            STRAVA_CLIENT_ID="${{ secrets.STRAVA_CLIENT_ID }}" \
+            STRAVA_CLIENT_SECRET="${{ secrets.STRAVA_CLIENT_SECRET }}" \
+            STRAVA_REFRESH_TOKEN="${{ secrets.STRAVA_REFRESH_TOKEN }}" \
+            GARMIN_EMAIL="${{ secrets.GARMIN_EMAIL }}" \
+            GARMIN_PASSWORD="${{ secrets.GARMIN_PASSWORD }}" \
+            GARMIN_DOMAIN="${{ secrets.GARMIN_DOMAIN }}" \
+            DEFAULT_OVERVIEW_LIMIT="${{ secrets.DEFAULT_OVERVIEW_LIMIT }}" \
+            CRON_OVERVIEW_LIMIT="${{ secrets.CRON_OVERVIEW_LIMIT }}" \
+            --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy Edge Function
+        run: |
+          supabase functions deploy garmin-strava \
+            --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} \
+            --import-map supabase/functions/import_map.json
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

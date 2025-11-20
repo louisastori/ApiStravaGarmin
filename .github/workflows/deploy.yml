@@ -1,9 +1,6 @@
 name: Deploy Cloudflare Worker
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
@@ -21,33 +18,33 @@ jobs:
         with:
           node-version: 18
           cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            ApiStravaGarmin/package-lock.json
+          cache-dependency-path: package-lock.json
 
-      - name: Detect project directory
-        id: detect-dir
+      - name: Check required secrets
         run: |
-          if [ -f wrangler.toml ]; then
-            echo "path=." >> "$GITHUB_OUTPUT"
-          elif [ -f ApiStravaGarmin/wrangler.toml ]; then
-            echo "path=ApiStravaGarmin" >> "$GITHUB_OUTPUT"
-          else
-            echo "wrangler.toml introuvable" >&2
+          missing=()
+          check() { [ -n "$1" ] || missing+=("$2"); }
+          check "${{ secrets.CLOUDFLARE_API_TOKEN }}" CLOUDFLARE_API_TOKEN
+          check "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" CLOUDFLARE_ACCOUNT_ID
+          check "${{ secrets.STRAVA_CLIENT_ID }}" STRAVA_CLIENT_ID
+          check "${{ secrets.STRAVA_CLIENT_SECRET }}" STRAVA_CLIENT_SECRET
+          check "${{ secrets.STRAVA_REFRESH_TOKEN }}" STRAVA_REFRESH_TOKEN
+          check "${{ secrets.GARMIN_EMAIL }}" GARMIN_EMAIL
+          check "${{ secrets.GARMIN_PASSWORD }}" GARMIN_PASSWORD
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Secrets manquants: ${missing[*]}" >&2
             exit 1
           fi
 
       - name: Install dependencies
-        run: |
-          cd "${{ steps.detect-dir.outputs.path }}"
-          npm ci --ignore-scripts
+        run: npm ci --ignore-scripts
 
       - name: Deploy with Wrangler
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: ${{ steps.detect-dir.outputs.path }}
+          workingDirectory: .
           command: deploy
           secrets: |
             STRAVA_CLIENT_ID=${{ secrets.STRAVA_CLIENT_ID }}
