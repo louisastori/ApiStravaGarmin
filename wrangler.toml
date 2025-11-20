@@ -1,0 +1,13 @@
+name = "api-garmin-strava"
+main = "src/worker.js"
+compatibility_date = "2025-01-20"
+workers_dev = true
+
+# Remplacez les IDs KV par ceux crées via `wrangler kv namespace create`
+[[kv_namespaces]]
+binding = "GARMIN_STRAVA_CACHE"
+id = "00000000000000000000000000000000"
+preview_id = "11111111111111111111111111111111"
+
+[[triggers]]
+crons = ["0 */2 * * *"]

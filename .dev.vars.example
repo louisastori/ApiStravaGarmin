@@ -1,0 +1,13 @@
+# Copiez ce fichier en .dev.vars pour tester en local via `wrangler dev`
+
+STRAVA_CLIENT_ID=
+STRAVA_CLIENT_SECRET=
+STRAVA_REFRESH_TOKEN=
+STRAVA_SCOPES=read,profile:read_all,activity:read_all
+
+GARMIN_EMAIL=
+GARMIN_PASSWORD=
+GARMIN_DOMAIN=garmin.com
+
+DEFAULT_OVERVIEW_LIMIT=5
+CRON_OVERVIEW_LIMIT=20
