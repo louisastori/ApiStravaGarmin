@@ -16,8 +16,18 @@ jobs:
       - id: check
         name: Check required secrets
         run: |
+          summary="$GITHUB_STEP_SUMMARY"
           missing=()
-          check() { [ -n "$1" ] || missing+=("$2"); }
+          check() {
+            if [ -n "$1" ]; then
+              echo "- $2 : OK" >> "$summary"
+            else
+              echo "- $2 : MANQUANT" >> "$summary"
+              missing+=("$2")
+            fi
+          }
+
+          echo "### Verification des secrets Supabase" >> "$summary"
           check "${{ secrets.SUPABASE_ACCESS_TOKEN }}" SUPABASE_ACCESS_TOKEN
           check "${{ secrets.SUPABASE_PROJECT_REF }}" SUPABASE_PROJECT_REF
           check "${{ secrets.STRAVA_CLIENT_ID }}" STRAVA_CLIENT_ID
@@ -28,15 +38,13 @@ jobs:
 
           if [ ${#missing[@]} -eq 0 ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
-            echo "Tous les secrets Supabase sont presents." >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$summary"
+            echo "Tous les secrets Supabase sont presents." >> "$summary"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
             echo "missing=${missing[*]}" >> "$GITHUB_OUTPUT"
-            {
-              echo "### Deploiement Supabase ignore"
-              echo ""
-              echo "Secrets manquants : ${missing[*]}"
-            } >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$summary"
+            echo "Deploiement bloque : secrets manquants -> ${missing[*]}" >> "$summary"
           fi
 
   deploy:

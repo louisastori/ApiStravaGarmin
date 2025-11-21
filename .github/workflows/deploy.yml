@@ -16,7 +16,6 @@ jobs:
           echo "Aucune action n'est executee."
 
   check-secrets:
-    if: ${{ env.CLOUDFLARE_DEPLOY_DISABLED != 'true' }}
     runs-on: ubuntu-latest
     outputs:
       ready: ${{ steps.check.outputs.ready }}
@@ -25,8 +24,18 @@ jobs:
       - id: check
         name: Check required secrets
         run: |
+          summary="$GITHUB_STEP_SUMMARY"
           missing=()
-          check() { [ -n "$1" ] || missing+=("$2"); }
+          check() {
+            if [ -n "$1" ]; then
+              echo "- $2 : OK" >> "$summary"
+            else
+              echo "- $2 : MANQUANT" >> "$summary"
+              missing+=("$2")
+            fi
+          }
+
+          echo "### Verification des secrets Cloudflare" >> "$summary"
           check "${{ secrets.CLOUDFLARE_API_TOKEN }}" CLOUDFLARE_API_TOKEN
           check "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" CLOUDFLARE_ACCOUNT_ID
           check "${{ secrets.STRAVA_CLIENT_ID }}" STRAVA_CLIENT_ID
@@ -37,15 +46,13 @@ jobs:
 
           if [ ${#missing[@]} -eq 0 ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
-            echo "Tous les secrets Cloudflare sont presents." >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$summary"
+            echo "Tous les secrets Cloudflare sont presents." >> "$summary"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
             echo "missing=${missing[*]}" >> "$GITHUB_OUTPUT"
-            {
-              echo "### Deploiement Cloudflare ignore"
-              echo ""
-              echo "Secrets manquants : ${missing[*]}"
-            } >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$summary"
+            echo "Deploiement bloque : secrets manquants -> ${missing[*]}" >> "$summary"
           fi
 
   deploy:
