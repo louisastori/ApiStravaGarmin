@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "typecheck": "wrangler types"
+    "typecheck": "wrangler types",
+    "sync:supabase": "node ./scripts/sync-supabase.js"
   },
   "keywords": [],
   "author": "",

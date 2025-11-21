@@ -73,10 +73,11 @@ Le worker sera accessible sur `<name>.workers.dev` (ou ton domaine).
    - `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `STRAVA_REFRESH_TOKEN`
    - `GARMIN_EMAIL`, `GARMIN_PASSWORD`, `GARMIN_DOMAIN` (optionnel)
    - `DEFAULT_OVERVIEW_LIMIT`, `CRON_OVERVIEW_LIMIT` (optionnel)
-2. Deploie : `supabase functions deploy garmin-strava --project-ref <PROJECT_REF> --import-map supabase/functions/import_map.json`
-3. Endpoint : `https://<PROJECT_REF>.functions.supabase.co/garmin-strava/api/overview?limit=5` (toutes les routes sont identiques à celles ci-dessous).
+2. Avant de deployer, synchronise le code partage pour Supabase : `npm run sync:supabase` (copie `src` vers `supabase/functions/src`, non versionne).
+3. Deploie : `supabase functions deploy garmin-strava --project-ref <PROJECT_REF> --import-map supabase/functions/import_map.json`
+4. Endpoint : `https://<PROJECT_REF>.functions.supabase.co/garmin-strava/api/overview?limit=5` (toutes les routes sont identiques a celles ci-dessous).
 
-Note : pas de KV sur Supabase, donc `/api/overview` recalcule les donnees à chaque appel (ou ajoute un stockage custom dans `src/cache.js`).
+Note : pas de KV sur Supabase, donc `/api/overview` recalcule les donnees a chaque appel (ou ajoute un stockage custom dans `src/cache.js`).
 
 ## Endpoints
 

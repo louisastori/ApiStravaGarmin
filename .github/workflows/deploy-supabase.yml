@@ -57,8 +57,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
+
+      - name: Sync shared sources for Supabase
+        run: npm run sync:supabase
 
       - name: Push Supabase secrets
         run: |

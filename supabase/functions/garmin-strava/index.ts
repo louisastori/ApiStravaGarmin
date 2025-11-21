@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
-import router from "../../../src/router.js";
-import { errorResponse } from "../../../src/utils/responses.js";
+import router from "../src/router.js";
+import { errorResponse } from "../src/utils/responses.js";
 
 const ENV_KEYS = [
   "STRAVA_CLIENT_ID",
