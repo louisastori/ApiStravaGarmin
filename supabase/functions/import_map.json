@@ -3,6 +3,7 @@
     "crypto-js": "npm:crypto-js@4.2.0",
     "itty-router": "npm:itty-router@4.0.21",
     "oauth-1.0a": "npm:oauth-1.0a@2.2.6",
-    "set-cookie-parser": "npm:set-cookie-parser@2.6.0"
+    "set-cookie-parser": "npm:set-cookie-parser@2.6.0",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.45.2"
   }
 }

@@ -73,11 +73,18 @@ Le worker sera accessible sur `<name>.workers.dev` (ou ton domaine).
    - `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `STRAVA_REFRESH_TOKEN`
    - `GARMIN_EMAIL`, `GARMIN_PASSWORD`, `GARMIN_DOMAIN` (optionnel)
    - `DEFAULT_OVERVIEW_LIMIT`, `CRON_OVERVIEW_LIMIT` (optionnel)
+   - `SUPABASE_URL` (= `https://<PROJECT_REF>.supabase.co`) et `SUPABASE_SERVICE_ROLE_KEY` si tu veux persister les stats Strava dans la base.
 2. Avant de deployer, synchronise le code partage pour Supabase : `npm run sync:supabase` (copie `src` vers `supabase/functions/src`, non versionne).
 3. Deploie : `supabase functions deploy garmin-strava --project-ref <PROJECT_REF> --import-map supabase/functions/import_map.json`
 4. Endpoint : `https://<PROJECT_REF>.functions.supabase.co/garmin-strava/api/overview?limit=5` (toutes les routes sont identiques a celles ci-dessous).
 
 Note : pas de KV sur Supabase, donc `/api/overview` recalcule les donnees a chaque appel (ou ajoute un stockage custom dans `src/cache.js`).
+
+### Persistance des stats Strava dans Supabase
+
+1. Applique le schema `supabase/sql/strava_stats.sql` (SQL editor Supabase ou `supabase db push` avec ton `SUPABASE_ACCESS_TOKEN`).
+2. Ajoute les secrets `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY` a la fonction `garmin-strava` (ne pas exposer le service role hors du runtime backend).
+3. Appelle `POST https://<PROJECT_REF>.functions.supabase.co/garmin-strava/api/strava/stats/store` pour recuperer les stats Strava via l API et inserer un snapshot dans `public.strava_stats` (reponse: `athleteId`, `generatedAt`, `snapshot`).
 
 ## Endpoints
 
@@ -87,6 +94,7 @@ Note : pas de KV sur Supabase, donc `/api/overview` recalcule les donnees a chaq
 | `GET` | `/api/strava/profile` | Profil Strava (`/athlete`). |
 | `GET` | `/api/strava/activities?limit=50` | Dernieres activites Strava (max 200). |
 | `GET` | `/api/strava/stats` | Stats agregees Strava. |
+| `POST` | `/api/strava/stats/store` | (Supabase) Recupere les stats Strava et les insere dans `strava_stats`. |
 | `GET` | `/api/garmin/profile` | Profil Garmin Connect. |
 | `GET` | `/api/garmin/activities?limit=50` | Dernieres activites Garmin (max 200). |
 | `GET` | `/api/overview?limit=5&source=live` | Snapshot agrege (profil + activites + stats). `source=live` bypass le cache KV. |

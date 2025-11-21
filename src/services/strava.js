@@ -153,7 +153,7 @@ export const getStravaActivities = (env, limit = 10) => {
   });
 };
 
-export const getStravaStats = async (env) => {
-  const profile = await getStravaProfile(env);
-  return stravaRequest(env, `/athletes/${profile.id}/stats`);
+export const getStravaStats = async (env, profile) => {
+  const resolvedProfile = profile || (await getStravaProfile(env));
+  return stravaRequest(env, `/athletes/${resolvedProfile.id}/stats`);
 };
