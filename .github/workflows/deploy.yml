@@ -1,10 +1,22 @@
-name: Deploy Cloudflare Worker
+name: Deploy Cloudflare Worker (disabled)
 
 on:
   workflow_dispatch:
 
+env:
+  CLOUDFLARE_DEPLOY_DISABLED: "true"
+
 jobs:
+  disabled:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip deploy (Cloudflare workflow desactive)
+        run: |
+          echo "Le workflow Cloudflare est desactive intentionnellement (CLOUDFLARE_DEPLOY_DISABLED=true)." >> "$GITHUB_STEP_SUMMARY"
+          echo "Aucune action n'est executee."
+
   check-secrets:
+    if: ${{ env.CLOUDFLARE_DEPLOY_DISABLED != 'true' }}
     runs-on: ubuntu-latest
     outputs:
       ready: ${{ steps.check.outputs.ready }}
@@ -38,7 +50,7 @@ jobs:
 
   deploy:
     needs: check-secrets
-    if: needs.check-secrets.outputs.ready == 'true'
+    if: needs.check-secrets.outputs.ready == 'true' && env.CLOUDFLARE_DEPLOY_DISABLED != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
