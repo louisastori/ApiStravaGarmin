@@ -15,7 +15,7 @@ const DEFAULT_DOMAIN = "garmin.com";
 const OAUTH_CONSUMER_URL = "https://thegarth.s3.amazonaws.com/oauth_consumer.json";
 const CSRF_RE = /name="_csrf"\s+value="(.+?)"/i;
 const TICKET_RE = /ticket=([^"]+)"/i;
-const ACCOUNT_LOCKED_RE = /var statuss*=s*"([^"]*)"/i;
+const ACCOUNT_LOCKED_RE = /var status\s*=\s*"([^"]*)"/i;
 const PAGE_TITLE_RE = /<title>([^<]*)<\/title>/i;
 
 const sessionCache = new Map();

@@ -7,18 +7,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  check-secrets:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+      missing: ${{ steps.check.outputs.missing }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-
-      - name: Check required secrets
+      - id: check
+        name: Check required secrets
         run: |
           missing=()
           check() { [ -n "$1" ] || missing+=("$2"); }
@@ -29,10 +25,32 @@ jobs:
           check "${{ secrets.STRAVA_REFRESH_TOKEN }}" STRAVA_REFRESH_TOKEN
           check "${{ secrets.GARMIN_EMAIL }}" GARMIN_EMAIL
           check "${{ secrets.GARMIN_PASSWORD }}" GARMIN_PASSWORD
-          if [ ${#missing[@]} -gt 0 ]; then
-            echo "Secrets manquants: ${missing[*]}" >&2
-            exit 1
+
+          if [ ${#missing[@]} -eq 0 ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "Tous les secrets Supabase sont presents." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "missing=${missing[*]}" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Deploiement Supabase ignore"
+              echo ""
+              echo "Secrets manquants : ${missing[*]}"
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
+
+  deploy:
+    needs: check-secrets
+    if: needs.check-secrets.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
 
       - name: Push Supabase secrets
         run: |
